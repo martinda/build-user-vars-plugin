@@ -1,5 +1,7 @@
 package org.jenkinsci.plugins.builduser;
+import hudson.EnvVars;
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
@@ -9,15 +11,17 @@ import hudson.model.Cause.UserCause;
 import hudson.model.Cause.UserIdCause;
 import hudson.model.Job;
 import hudson.model.Run;
-import hudson.tasks.BuildWrapper;
+import hudson.model.TaskListener;
 import hudson.tasks.BuildWrapperDescriptor;
 import hudson.triggers.SCMTrigger;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.HashMap;
 import javax.annotation.Nonnull;
 
 import jenkins.model.Jenkins;
+import jenkins.tasks.SimpleBuildWrapper;
 
 import org.jenkinsci.plugins.builduser.utils.ClassUtils;
 import org.jenkinsci.plugins.builduser.varsetter.IUsernameSettable;
@@ -34,7 +38,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
  * @author GKonovalenko
  */
 @SuppressWarnings("deprecation")
-public class BuildUser extends BuildWrapper {
+public class BuildUser extends SimpleBuildWrapper {
 
     private static final String EXTENSION_DISPLAY_NAME = "Set jenkins user build variables";
 
@@ -44,18 +48,16 @@ public class BuildUser extends BuildWrapper {
         //noop
     }
 
-    @SuppressWarnings("rawtypes")
-    @Override
-    public Environment setUp(final AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
-        /* noop */
-        return new Environment() {
-            @Override
-            public void buildEnvVars(Map<String, String> env) {
-              makeUserBuildVariables(build, env);
-            }
-          };
+    public void setUp(Context context, Run<?,?> build, FilePath workspace, Launcher launcher,
+        TaskListener listener, EnvVars initialEnvironment)
+        throws IOException, InterruptedException 
+    {
+        Map <String, String> variables = new HashMap<String,String>();
+        makeUserBuildVariables(build, variables);
+        for (Map.Entry<String, String> entry : variables.entrySet()) {
+            context.env(entry.getKey(), entry.getValue());
+        }
     }
-
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
